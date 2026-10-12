@@ -15,6 +15,11 @@ fn highlight() -> Style {
 }
 
 pub fn draw(frame: &mut Frame, app: &App) {
+    if app.input_view {
+        crate::input_view::draw(frame, app);
+        draw_modal(frame, app);
+        return;
+    }
     if app.editor.is_some() {
         crate::grid::draw(frame, app);
         draw_modal(frame, app);
@@ -200,7 +205,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
             .style(Style::default().fg(Color::Gray)),
             rows[4],
         );
-        frame.render_widget(Paragraph::new("Space play/pause  ↑↓ tempo  ←→ select  Enter edit\nE grid  P mode  S subdivision  V mixer  G training  : commands  ? help  Q quit")
+        frame.render_widget(Paragraph::new("Space play/pause  ↑↓ tempo  ←→ select  Enter edit\nI input  E grid  P mode  V mixer  G training  : commands  ? help  Q quit")
             .wrap(Wrap { trim: true }).block(Block::default().borders(Borders::TOP)), rows[5]);
     }
     draw_modal(frame, app);
@@ -220,6 +225,20 @@ fn centered(area: Rect, width: u16, height: u16) -> Rect {
 fn draw_modal(frame: &mut Frame, app: &App) {
     let (title, lines, height) = match &app.modal {
         Modal::None => return,
+        Modal::Help if app.input_view => (
+            " Input monitor help ",
+            vec![
+                Line::from("N select next bridge instance"),
+                Line::from("C select input channel · R rescan/reconnect"),
+                Line::from("Space independent metronome play/pause"),
+                Line::from("+/- tempo · I/Esc return · Q quit"),
+                Line::from("Plugin forwards dry audio; TUI never monitors it."),
+                Line::from("Dropped blocks reset analysis continuity."),
+                Line::from("Multiple instances require explicit selection."),
+                Line::from("Waveform is not a calibrated timing measurement."),
+            ],
+            12,
+        ),
         Modal::Help if app.editor.is_some() => (
             " Editor help ",
             vec![
@@ -246,6 +265,7 @@ fn draw_modal(frame: &mut Frame, app: &App) {
                 Line::from("V           volume mixer (live adjustment)"),
                 Line::from("G           sound / silent bar training"),
                 Line::from("E           rhythm editor; P pattern/normal mode"),
+                Line::from("I           dry-audio input monitor"),
                 Line::from("T           tap tempo; M mute; R reset"),
                 Line::from(":           command search; Tab completes"),
                 Line::from("Q / Esc     quit from main screen"),

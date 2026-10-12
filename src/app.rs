@@ -206,6 +206,8 @@ pub struct App {
     pub silent_bar: bool,
     pub cycle_bar: u8,
     pub config_status: String,
+    pub input_view: bool,
+    pub input_snapshot: crate::monitor::Snapshot,
     pub active: Settings,
     pub selected: usize,
     pub modal: Modal,
@@ -234,6 +236,8 @@ impl Default for App {
             silent_bar: false,
             cycle_bar: 0,
             config_status: String::new(),
+            input_view: false,
+            input_snapshot: crate::monitor::Snapshot::default(),
             active: Settings {
                 bpm: 120,
                 beats_per_bar: 4,

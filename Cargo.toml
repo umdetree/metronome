@@ -2,6 +2,24 @@
 name = "metronome"
 version = "0.1.0"
 edition = "2024"
+default-run = "metronome"
+
+[workspace]
+members = ["crates/audio-bridge", "crates/bridge-plugin"]
+default-members = [".", "crates/audio-bridge", "crates/bridge-plugin"]
+resolver = "2"
+
+[features]
+asio-probe = ["dep:cpal", "cpal/asio", "dep:asio-sys"]
+
+[[bin]]
+name = "asio-probe"
+path = "src/bin/asio_probe.rs"
+required-features = ["asio-probe"]
+
+[[bin]]
+name = "bridge-probe"
+path = "src/bin/bridge_probe.rs"
 
 [dependencies]
 crossterm = "0.28"
@@ -11,3 +29,8 @@ directories = "6"
 serde = { version = "1", features = ["derive"] }
 tempfile = "3"
 toml = "0.8"
+audio-bridge = { path = "crates/audio-bridge" }
+
+[target.'cfg(windows)'.dependencies]
+cpal = { version = "0.15.3", optional = true }
+asio-sys = { version = "0.2", optional = true }

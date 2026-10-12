@@ -6,6 +6,7 @@ use crossterm::event::{KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 pub struct Action {
     pub quit: bool,
     pub reset: bool,
+    pub monitor: Option<crate::monitor::Command>,
 }
 
 pub fn handle(app: &mut App, key: KeyEvent) -> Action {
@@ -20,6 +21,31 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Action {
     // Modal input never leaks into global shortcuts.
     if app.modal != Modal::None {
         modal_key(app, key.code, &mut action);
+        return action;
+    }
+    if app.input_view {
+        let repeat = key.kind == KeyEventKind::Repeat;
+        match key.code {
+            KeyCode::Esc | KeyCode::Char('i') if !repeat => app.input_view = false,
+            KeyCode::Char('q') => action.quit = true,
+            KeyCode::Char('n') if !repeat => {
+                action.monitor = Some(crate::monitor::Command::NextSource)
+            }
+            KeyCode::Char('c') if !repeat => {
+                action.monitor = Some(crate::monitor::Command::NextChannel)
+            }
+            KeyCode::Char('r') if !repeat => {
+                action.monitor = Some(crate::monitor::Command::Refresh)
+            }
+            KeyCode::Char('?') if !repeat => app.modal = Modal::Help,
+            KeyCode::Char(' ') if !repeat => {
+                toggle(app);
+                action.reset = true;
+            }
+            KeyCode::Char('+') | KeyCode::Char('=') => app.adjust_bpm(1),
+            KeyCode::Char('-') => app.adjust_bpm(-1),
+            _ => {}
+        }
         return action;
     }
     if app.editor.is_some() {
@@ -72,6 +98,7 @@ pub fn handle(app: &mut App, key: KeyEvent) -> Action {
         KeyCode::Char('v') if !repeat => app.modal = Modal::Mixer(0),
         KeyCode::Char('g') if !repeat => app.modal = Modal::Training(0),
         KeyCode::Char('e') if !repeat => open_editor(app),
+        KeyCode::Char('i') if !repeat => app.input_view = true,
         KeyCode::Char('p') if !repeat => app.pattern.enabled = !app.pattern.enabled,
         KeyCode::Char('?') if !repeat => app.modal = Modal::Help,
         KeyCode::Char(':') if !repeat => {
@@ -197,6 +224,7 @@ fn editor_key(app: &mut App, key: KeyEvent, action: &mut Action) {
             }
         }
         KeyCode::Char('b') if !repeat => app.modal = Modal::PatternSetup(0),
+        KeyCode::Char('i') if !repeat => app.input_view = true,
         KeyCode::Char('p') if !repeat => app.pattern.enabled = !app.pattern.enabled,
         KeyCode::Enter if !repeat => {
             toggle(app);
@@ -544,6 +572,23 @@ mod tests {
         command(&mut app, "volume subdivision 0", &mut action).unwrap();
         assert_eq!(app.subdivision, Subdivision::Triplet);
         assert_eq!(app.volumes.subdivision, 0);
+    }
+    #[test]
+    fn input_monitor_keys_do_not_edit_rhythm_or_reset_preferences() {
+        let mut app = App::default();
+        press(&mut app, KeyCode::Char('i'));
+        assert!(app.input_view);
+        assert!(matches!(
+            press(&mut app, KeyCode::Char('c')).monitor,
+            Some(crate::monitor::Command::NextChannel)
+        ));
+        assert!(matches!(
+            press(&mut app, KeyCode::Char('r')).monitor,
+            Some(crate::monitor::Command::Refresh)
+        ));
+        assert_eq!(app.bpm, 120);
+        assert!(!press(&mut app, KeyCode::Esc).quit);
+        assert!(!app.input_view);
     }
     #[test]
     fn editor_space_edits_while_enter_controls_playback_and_escape_returns() {

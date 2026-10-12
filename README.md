@@ -22,6 +22,10 @@ cargo install --path . --locked
 
 当前版本为 `0.1.0`，对应 Git tag `v0.1.0`。版本记录见 [CHANGELOG.md](CHANGELOG.md)。
 
+实验性的 ASIO 多客户端探测工具独立于普通节拍器，使用可选 feature 构建，说明见 [ASIO_PROBE.md](docs/ASIO_PROBE.md)。
+
+新增实验性的 **CLAP 干声桥接插件 + TUI 输入监视页**，按 `I` 查看电平和波形；构建、安装及 REAPER Monitoring FX 用法见 [AUDIO_BRIDGE.md](docs/AUDIO_BRIDGE.md)。这不是起音评分工具，尚未完成延迟校准。
+
 首次运行默认 120 BPM、每小节 4 拍；以后自动恢复上次设置，始终暂停，按空格开始。BPM 始终以四分音符为基准：120 BPM 的八分音符细分每秒响 4 次，三连音每秒响 6 次。
 
 ## 功能
@@ -52,6 +56,7 @@ cargo install --path . --locked
 | V | 音量面板：↑↓ 选择，←→ 调整 5%，即时生效 |
 | G | 静默训练面板：↑↓ 选择，←→ 调整小节数 |
 | E | 打开节奏编辑页并启用自定义节奏 |
+| I | 打开干声音频监视页，N 选择实例、C 选择通道、R 重新连接 |
 | P | 在普通节拍器 / 自定义节奏模式间切换，保留两套节奏设置 |
 | T | 点击测速 |
 | M | 整体静音 / 恢复 |
@@ -159,10 +164,10 @@ quit
 ## 开发与限制
 
 ```sh
-cargo test --locked
-cargo clippy --locked --all-targets -- -D warnings
-cargo fmt --check
-cargo build --release --locked
+cargo test --workspace --locked
+cargo clippy --workspace --locked --all-targets -- -D warnings
+cargo fmt --all --check
+cargo build --workspace --release --locked
 ```
 
 ### 代码结构
@@ -174,8 +179,11 @@ cargo build --release --locked
 - `src/ui.rs` / `src/grid.rs`：主界面、弹窗和节奏编辑页。
 - `src/pattern.rs`：节奏网格、尺寸转换和编辑历史。
 - `src/config.rs`：配置验证、恢复与自动保存。
+- `src/monitor.rs` / `src/input_view.rs`：后台音频接收分析及输入监视页。
+- `crates/audio-bridge`：跨进程有界音频队列与接收 API。
+- `crates/bridge-plugin`：CLAP 原样透传插件。
 
-`Cargo.lock` 随应用代码提交，`target/` 构建产物不纳入版本控制。当前不包含音频输入、吉他检测或节奏偏差评分；这些功能将作为后续迭代开发。
+`Cargo.lock` 随应用代码提交，`target/` 与 `dist/` 构建产物不纳入版本控制。新增宿主音频接收，但当前不包含吉他起音检测或节奏偏差评分；这些功能将作为后续迭代开发。
 
 节拍调度在独立线程中使用绝对截止时间，避免累计睡眠漂移；系统停顿后不追赶播放积压节拍。系统调度、音频缓冲与终端刷新仍会造成延迟，声音和画面不能保证采样级同步，这不是硬实时音频工具。
 
